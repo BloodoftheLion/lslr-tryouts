@@ -321,11 +321,9 @@ const SKILLS=[
   {id:'hustle',label:'Competitiveness / hustle',hint:'Energy, attitude, motor',group:'physical'},
   {id:'stealing',label:'Stealing ability',hint:'Jump, reads, instincts',group:'physical'},
 ];
-const MEASURABLES={
-  pitching:['FB peak (mph)','FB avg (mph)','CH peak (mph)','CH avg (mph)','Strike %'],
-  exitvelo:['Tee peak (mph)','Tee avg (mph)','Live peak (mph)','Live avg (mph)'],
-  speed:['60-yard dash (sec)','Leadoff to 2nd (sec)']
-};
+const PITCH_COUNT=5;
+const EV_COUNT=10;
+const MEASURABLES_SPEED=['Home to home (sec)','Leadoff to 2nd (sec)'];
 
 let players={},evals={},currentRec=null;
 
@@ -402,15 +400,125 @@ function buildScoringRows(){
 }
 
 function buildMeasurables(){
-  Object.entries(MEASURABLES).forEach(([key,fields])=>{
-    const c=document.getElementById('m-'+key);if(!c)return;
-    fields.forEach(f=>{
-      const id='m_'+key+'_'+f.replace(/[^a-z0-9]/gi,'_');
+  // Pitching - FB pitches
+  const fb=document.getElementById('m-pitching');
+  if(fb){
+    for(let i=1;i<=PITCH_COUNT;i++){
+      const div=document.createElement('div');div.className='measurable-item';
+      div.innerHTML=`<label>FB pitch ${i} (mph)</label><input type="number" id="m_pitch_fb_${i}" placeholder="—" oninput="calcPitchStats()"/>`;
+      fb.appendChild(div);
+    }
+    // CH pitches
+    const chLabel=document.createElement('div');chLabel.className='sh';chLabel.style.marginTop='1rem';chLabel.textContent='Changeup pitches';fb.after(chLabel);
+    const chGrid=document.createElement('div');chGrid.className='measurable-grid';chGrid.id='m-ch';chLabel.after(chGrid);
+    for(let i=1;i<=PITCH_COUNT;i++){
+      const div=document.createElement('div');div.className='measurable-item';
+      div.innerHTML=`<label>CH pitch ${i} (mph)</label><input type="number" id="m_pitch_ch_${i}" placeholder="—" oninput="calcPitchStats()"/>`;
+      chGrid.appendChild(div);
+    }
+    // Strike/Ball toggles
+    const sbLabel=document.createElement('div');sbLabel.className='sh';sbLabel.style.marginTop='1rem';sbLabel.textContent='Strike / Ball (tap each pitch)';chGrid.after(sbLabel);
+    const sbWrap=document.createElement('div');sbWrap.id='m-sb-wrap';sbWrap.style.cssText='margin-bottom:8px';sbLabel.after(sbWrap);
+    for(let i=1;i<=PITCH_COUNT*2;i++){
+      const type=i<=PITCH_COUNT?'FB':'CH';const idx=i<=PITCH_COUNT?i:i-PITCH_COUNT;
+      const btn=document.createElement('button');
+      btn.id=`m_sb_${i}`;btn.dataset.val='ball';
+      btn.style.cssText='margin:3px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:12px;font-weight:500;color:var(--text-muted)';
+      btn.textContent=`${type}${idx} B`;
+      btn.onclick=function(){toggleSB(this,i,type,idx);};
+      sbWrap.appendChild(btn);
+    }
+    // Calculated stats display
+    const statsDiv=document.createElement('div');statsDiv.id='m-pitch-stats';
+    statsDiv.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;padding:10px;background:var(--surface);border-radius:var(--radius)';
+    statsDiv.innerHTML='<div style="text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">FB peak</div><div id="stat-fb-peak" style="font-size:18px;font-weight:700;color:var(--red)">—</div></div><div style="text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">FB avg</div><div id="stat-fb-avg" style="font-size:18px;font-weight:700;color:var(--red)">—</div></div><div style="text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">CH peak</div><div id="stat-ch-peak" style="font-size:18px;font-weight:700;color:var(--navy)">—</div></div><div style="text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">CH avg</div><div id="stat-ch-avg" style="font-size:18px;font-weight:700;color:var(--navy)">—</div></div><div style="text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Strike %</div><div id="stat-strike-pct" style="font-size:18px;font-weight:700;color:var(--success)">—</div></div>';
+    sbWrap.after(statsDiv);
+  }
+  // Exit velo - tee swings
+  const tee=document.getElementById('m-exitvelo');
+  if(tee){
+    for(let i=1;i<=EV_COUNT;i++){
+      const div=document.createElement('div');div.className='measurable-item';
+      div.innerHTML=`<label>Tee swing ${i} (mph)</label><input type="number" id="m_ev_tee_${i}" placeholder="—" oninput="calcEVStats()"/>`;
+      tee.appendChild(div);
+    }
+    // Live swings
+    const liveLabel=document.createElement('div');liveLabel.className='sh';liveLabel.style.marginTop='1rem';liveLabel.textContent='Live hitting swings';tee.after(liveLabel);
+    const liveGrid=document.createElement('div');liveGrid.className='measurable-grid';liveGrid.id='m-ev-live';liveLabel.after(liveGrid);
+    for(let i=1;i<=EV_COUNT;i++){
+      const div=document.createElement('div');div.className='measurable-item';
+      div.innerHTML=`<label>Live swing ${i} (mph)</label><input type="number" id="m_ev_live_${i}" placeholder="—" oninput="calcEVStats()"/>`;
+      liveGrid.appendChild(div);
+    }
+    // EV stats
+    const evStats=document.createElement('div');evStats.id='m-ev-stats';
+    evStats.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:12px;padding:10px;background:var(--surface);border-radius:var(--radius)';
+    evStats.innerHTML='<div style="text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Tee peak</div><div id="stat-tee-peak" style="font-size:18px;font-weight:700;color:var(--red)">—</div></div><div style="text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Tee avg</div><div id="stat-tee-avg" style="font-size:18px;font-weight:700;color:var(--red)">—</div></div><div style="text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Live peak</div><div id="stat-live-peak" style="font-size:18px;font-weight:700;color:var(--navy)">—</div></div><div style="text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Live avg</div><div id="stat-live-avg" style="font-size:18px;font-weight:700;color:var(--navy)">—</div></div>';
+    liveGrid.after(evStats);
+  }
+  // Speed
+  const spd=document.getElementById('m-speed');
+  if(spd){
+    MEASURABLES_SPEED.forEach(f=>{
+      const id='m_speed_'+f.replace(/[^a-z0-9]/gi,'_');
       const div=document.createElement('div');div.className='measurable-item';
       div.innerHTML=`<label>${f}</label><input type="text" id="${id}" placeholder="—"/>`;
-      c.appendChild(div);
+      spd.appendChild(div);
     });
-  });
+  }
+}
+
+function toggleSB(btn,i,type,idx){
+  const isStrike=btn.dataset.val==='ball';
+  btn.dataset.val=isStrike?'strike':'ball';
+  btn.textContent=`${type}${idx} ${isStrike?'S':'B'}`;
+  btn.style.background=isStrike?'var(--success-bg)':'var(--surface)';
+  btn.style.borderColor=isStrike?'var(--success-border)':'var(--border)';
+  btn.style.color=isStrike?'var(--success)':'var(--text-muted)';
+  calcPitchStats();
+}
+
+function calcPitchStats(){
+  const fbVals=[],chVals=[];
+  for(let i=1;i<=PITCH_COUNT;i++){
+    const v=parseFloat(document.getElementById('m_pitch_fb_'+i)?.value);if(!isNaN(v)&&v>0)fbVals.push(v);
+  }
+  for(let i=1;i<=PITCH_COUNT;i++){
+    const v=parseFloat(document.getElementById('m_pitch_ch_'+i)?.value);if(!isNaN(v)&&v>0)chVals.push(v);
+  }
+  const fbPeak=fbVals.length?Math.max(...fbVals):null;
+  const fbAvg=fbVals.length?(fbVals.reduce((a,b)=>a+b,0)/fbVals.length):null;
+  const chPeak=chVals.length?Math.max(...chVals):null;
+  const chAvg=chVals.length?(chVals.reduce((a,b)=>a+b,0)/chVals.length):null;
+  let strikes=0,total=0;
+  for(let i=1;i<=PITCH_COUNT*2;i++){
+    const btn=document.getElementById('m_sb_'+i);
+    if(btn){total++;if(btn.dataset.val==='strike')strikes++;}
+  }
+  const pct=total>0?Math.round((strikes/total)*100):null;
+  document.getElementById('stat-fb-peak').textContent=fbPeak!==null?fbPeak.toFixed(1):'—';
+  document.getElementById('stat-fb-avg').textContent=fbAvg!==null?fbAvg.toFixed(1):'—';
+  document.getElementById('stat-ch-peak').textContent=chPeak!==null?chPeak.toFixed(1):'—';
+  document.getElementById('stat-ch-avg').textContent=chAvg!==null?chAvg.toFixed(1):'—';
+  document.getElementById('stat-strike-pct').textContent=pct!==null?pct+'%':'—';
+}
+
+function calcEVStats(){
+  const teeVals=[],liveVals=[];
+  for(let i=1;i<=EV_COUNT;i++){
+    const v=parseFloat(document.getElementById('m_ev_tee_'+i)?.value);if(!isNaN(v)&&v>0)teeVals.push(v);
+  }
+  for(let i=1;i<=EV_COUNT;i++){
+    const v=parseFloat(document.getElementById('m_ev_live_'+i)?.value);if(!isNaN(v)&&v>0)liveVals.push(v);
+  }
+  const tp=teeVals.length?Math.max(...teeVals):null;
+  const ta=teeVals.length?(teeVals.reduce((a,b)=>a+b,0)/teeVals.length):null;
+  const lp=liveVals.length?Math.max(...liveVals):null;
+  const la=liveVals.length?(liveVals.reduce((a,b)=>a+b,0)/liveVals.length):null;
+  document.getElementById('stat-tee-peak').textContent=tp!==null?tp.toFixed(1):'—';
+  document.getElementById('stat-tee-avg').textContent=ta!==null?ta.toFixed(1):'—';
+  document.getElementById('stat-live-peak').textContent=lp!==null?lp.toFixed(1):'—';
+  document.getElementById('stat-live-avg').textContent=la!==null?la.toFixed(1):'—';
 }
 
 function setStar(skillId,val){
@@ -436,12 +544,24 @@ function setRec(r){
 
 function getMeasurableVals(){
   const vals={};
-  Object.entries(MEASURABLES).forEach(([key,fields])=>{
-    fields.forEach(f=>{
-      const id='m_'+key+'_'+f.replace(/[^a-z0-9]/gi,'_');
-      const el=document.getElementById(id);
-      if(el&&el.value.trim())vals[id]=el.value.trim();
-    });
+  // Collect raw pitch values
+  for(let i=1;i<=PITCH_COUNT;i++){
+    const fb=document.getElementById('m_pitch_fb_'+i);if(fb&&fb.value.trim())vals['m_pitch_fb_'+i]=fb.value.trim();
+    const ch=document.getElementById('m_pitch_ch_'+i);if(ch&&ch.value.trim())vals['m_pitch_ch_'+i]=ch.value.trim();
+  }
+  // Collect S/B toggles
+  for(let i=1;i<=PITCH_COUNT*2;i++){
+    const btn=document.getElementById('m_sb_'+i);if(btn)vals['m_sb_'+i]=btn.dataset.val;
+  }
+  // Collect raw EV values
+  for(let i=1;i<=EV_COUNT;i++){
+    const tv=document.getElementById('m_ev_tee_'+i);if(tv&&tv.value.trim())vals['m_ev_tee_'+i]=tv.value.trim();
+    const lv=document.getElementById('m_ev_live_'+i);if(lv&&lv.value.trim())vals['m_ev_live_'+i]=lv.value.trim();
+  }
+  // Speed fields
+  MEASURABLES_SPEED.forEach(f=>{
+    const id='m_speed_'+f.replace(/[^a-z0-9]/gi,'_');
+    const el=document.getElementById(id);if(el&&el.value.trim())vals[id]=el.value.trim();
   });
   return vals;
 }
@@ -452,12 +572,34 @@ function clearForm(){
   ['sc-strengths','sc-needs','sc-notes'].forEach(id=>document.getElementById(id).value='');
   currentRec=null;
   ['A','B','C','D'].forEach(x=>{const b=document.getElementById('rec-'+x);if(b)b.className='rec-btn';});
+  // Reset S/B toggles
+  for(let i=1;i<=PITCH_COUNT*2;i++){
+    const type=i<=PITCH_COUNT?'FB':'CH';const idx=i<=PITCH_COUNT?i:i-PITCH_COUNT;
+    const btn=document.getElementById('m_sb_'+i);
+    if(btn){btn.dataset.val='ball';btn.textContent=`${type}${idx} B`;btn.style.background='var(--surface)';btn.style.borderColor='var(--border)';btn.style.color='var(--text-muted)';}
+  }
+  ['stat-fb-peak','stat-fb-avg','stat-ch-peak','stat-ch-avg','stat-strike-pct','stat-tee-peak','stat-tee-avg','stat-live-peak','stat-live-avg'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
 }
 
 function loadEvalIntoForm(ev){
   clearForm();if(!ev)return;
   if(ev.scores)Object.entries(ev.scores).forEach(([sid,val])=>{if(val==='NA')setStar(sid,0);else if(val)setStar(sid,val);});
-  if(ev.measurables)Object.entries(ev.measurables).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.value=val;});
+  if(ev.measurables){
+    Object.entries(ev.measurables).forEach(([id,val])=>{
+      if(id.startsWith('m_sb_')){
+        const btn=document.getElementById(id);
+        if(btn&&val==='strike'){
+          const i=parseInt(id.replace('m_sb_',''));
+          const type=i<=PITCH_COUNT?'FB':'CH';const idx=i<=PITCH_COUNT?i:i-PITCH_COUNT;
+          btn.dataset.val='strike';btn.textContent=`${type}${idx} S`;
+          btn.style.background='var(--success-bg)';btn.style.borderColor='var(--success-border)';btn.style.color='var(--success)';
+        }
+      } else {
+        const el=document.getElementById(id);if(el)el.value=val;
+      }
+    });
+    calcPitchStats();calcEVStats();
+  }
   if(ev.recommendation)setRec(ev.recommendation);
   if(ev.strengths)document.getElementById('sc-strengths').value=ev.strengths;
   if(ev.needs)document.getElementById('sc-needs').value=ev.needs;
@@ -619,7 +761,7 @@ function showPlayerDetail(pnum){
     if(ev.needs)html+=`<div class="coach-note"><strong>Needs work</strong>${ev.needs}</div>`;
     if(ev.notes)html+=`<div class="coach-note"><strong>Notes</strong>${ev.notes}</div>`;
     const mvals=Object.entries(ev.measurables||{});
-    if(mvals.length){html+=`<div class="m-pills">`;mvals.forEach(([k,v])=>html+=`<span class="m-pill">${k.replace(/m_[a-z]+_/,'').replace(/_/g,' ')}: <strong>${v}</strong></span>`);html+='</div>';}
+    if(mvals.length){html+=`<div class="m-pills">`;mvals.forEach(([k,v])=>html+=`<span class="m-pill">${k.replace(/m_[a-z]+_/i,'').replace(/_+/g,' ').trim()}: <strong>${v}</strong></span>`);html+='</div>';}
     html+='</div>';
   });
   html+='</div>';container.innerHTML=html;
@@ -642,6 +784,160 @@ buildScoringRows();
 buildMeasurables();
 
 // Only load data if already authenticated
+if(sessionStorage.getItem('lslr_auth')==='1') refreshAll();
+</script>
+</body>
+</html>
+    const result=await api('evaluations?on_conflict=player_num,coach','POST',payload);
+    evals[pnum+'_'+coach]=Array.isArray(result)?result[0]:result;
+    showStatus('sc-status','success','Evaluation saved.');setSyncStatus('ok');
+  }catch(e){showStatus('sc-status','error','Save failed — check your connection.');setSyncStatus('error');}
+  btn.disabled=false;btn.textContent='Save evaluation';
+}
+
+async function registerPlayer(){
+  const num=document.getElementById('ci-num').value.trim();
+  const name=document.getElementById('ci-name').value.trim();
+  if(!num){showStatus('ci-status','error','Player number is required.');return;}
+  if(!name){showStatus('ci-status','error','Player name is required.');return;}
+  if(players[num]){showStatus('ci-status','error','Player #'+num+' is already registered.');return;}
+  const btn=document.getElementById('ci-btn');btn.disabled=true;btn.textContent='Adding…';
+  try{
+    const payload={num,name,age:document.getElementById('ci-age').value.trim(),pos:document.getElementById('ci-pos').value,contact:document.getElementById('ci-contact').value.trim()};
+    await api('players','POST',payload);players[num]=payload;
+    ['ci-num','ci-name','ci-age','ci-contact'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('ci-pos').value='';
+    refreshPlayerList();refreshPlayerSelect();
+    showStatus('ci-status','success','#'+num+' '+name+' registered.');setSyncStatus('ok');
+  }catch(e){showStatus('ci-status','error','Registration failed — check your connection.');setSyncStatus('error');}
+  btn.disabled=false;btn.textContent='Add player';
+}
+
+async function removePlayer(num){
+  if(!confirm('Remove player #'+num+'? This also deletes their evaluations.'))return;
+  try{
+    await api('players?num=eq.'+encodeURIComponent(num),'DELETE');
+    delete players[num];Object.keys(evals).filter(k=>k.startsWith(num+'_')).forEach(k=>delete evals[k]);
+    refreshPlayerList();refreshPlayerSelect();renderDashboard();
+  }catch(e){showStatus('ci-status','error','Delete failed.');}
+}
+
+function refreshPlayerList(){
+  const list=document.getElementById('player-list');
+  const nums=Object.keys(players).sort((a,b)=>parseInt(a)-parseInt(b));
+  document.getElementById('player-count').textContent=nums.length;
+  list.innerHTML=nums.map(n=>`<span class="chip">#${n} ${players[n].name}<button class="chip-del" onclick="removePlayer('${n}')" aria-label="Remove">×</button></span>`).join('');
+}
+
+function refreshPlayerSelect(){
+  const sel=document.getElementById('sc-player');const cur=sel.value;
+  sel.innerHTML='<option value="">Select player…</option>';
+  Object.keys(players).sort((a,b)=>parseInt(a)-parseInt(b)).forEach(n=>{
+    const o=document.createElement('option');o.value=n;o.textContent='#'+n+' — '+players[n].name;
+    if(n===cur)o.selected=true;sel.appendChild(o);
+  });
+}
+
+function showSection(id,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('section-'+id).classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(id==='dashboard')refreshAll();
+}
+
+function showScoreTab(tab,btn){
+  document.querySelectorAll('[id^=score-tab-]').forEach(el=>el.style.display='none');
+  document.getElementById('score-tab-'+tab).style.display='block';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+}
+
+function getComposite(pnum){
+  let total=0,count=0,recs=[];
+  COACHES.forEach(coach=>{
+    const ev=evals[pnum+'_'+coach];if(!ev)return;
+    if(ev.recommendation)recs.push(ev.recommendation);
+    Object.values(ev.scores||{}).forEach(v=>{if(v!=='NA'&&v!==null&&v!==undefined){total+=Number(v);count++;}});
+  });
+  const avg=count>0?total/count:null;
+  const bestRec=recs.length?(['A','B','C','D'].find(r=>recs.includes(r))||null):null;
+  return{avg,count,rec:bestRec,evalCount:recs.length};
+}
+
+function renderDashboard(){
+  const sort=document.getElementById('dash-sort').value;
+  const filter=document.getElementById('dash-filter').value;
+  const allNums=Object.keys(players);
+  document.getElementById('stat-total').textContent=allNums.length;
+  document.getElementById('stat-evals').textContent=Object.keys(evals).length;
+  let list=allNums.map(n=>({num:n,...players[n],...getComposite(n)}));
+  if(filter==='scored')list=list.filter(p=>p.evalCount>0);
+  else if(['A','B','C','D'].includes(filter))list=list.filter(p=>p.rec===filter);
+  list.sort((a,b)=>{
+    if(sort==='score')return(b.avg||0)-(a.avg||0);
+    if(sort==='num')return parseInt(a.num)-parseInt(b.num);
+    if(sort==='rec'){const o={A:0,B:1,C:2,D:3};return(o[a.rec]??4)-(o[b.rec]??4);}
+    return 0;
+  });
+  const top12=allNums.map(n=>({num:n,...getComposite(n)})).filter(p=>p.avg!==null).sort((a,b)=>(b.avg||0)-(a.avg||0)).slice(0,12).map(p=>p.num);
+  document.getElementById('stat-top12').textContent=Math.min(top12.length,12);
+  const grid=document.getElementById('dash-grid');grid.innerHTML='';
+  list.forEach(p=>{
+    const isTop=top12.includes(p.num);
+    const pct=p.avg?Math.round((p.avg/5)*100):0;
+    const card=document.createElement('div');card.className='player-card'+(isTop?' top12':'');
+    card.onclick=()=>showPlayerDetail(p.num);
+    card.innerHTML=`<div class="player-num">#${p.num}</div>
+      <div class="player-name">${p.name}${p.pos?' · '+p.pos:''}</div>
+      <div class="badges">${p.rec?`<span class="badge badge-${p.rec}">${p.rec}</span>`:''}${isTop?`<span class="badge badge-top">Top 12</span>`:''}</div>
+      ${p.avg!==null?`<div class="player-score">${p.avg.toFixed(1)} <span style="font-size:11px;font-weight:400;color:var(--text-muted)">/ 5.0</span></div>`:`<div style="font-size:12px;color:var(--text-muted)">Not yet scored</div>`}
+      <div class="score-bar"><div class="score-fill" style="width:${pct}%"></div></div>
+      ${p.evalCount>0?`<div style="font-size:11px;color:var(--text-muted);margin-top:6px">${p.evalCount} eval${p.evalCount!==1?'s':''}</div>`:''}`;
+    grid.appendChild(card);
+  });
+}
+
+function showPlayerDetail(pnum){
+  const container=document.getElementById('player-detail');
+  const p=players[pnum];if(!p){container.innerHTML='';return;}
+  const comp=getComposite(pnum);
+  let html=`<div class="detail-panel"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+    <div><div style="display:flex;align-items:baseline;gap:10px"><div style="font-size:28px;font-weight:700;color:var(--red)">#${pnum}</div><div style="font-size:17px;font-weight:600">${p.name}</div></div>
+    <div style="font-size:13px;color:var(--text-muted)">${p.pos||''}${p.age?' · '+p.age:''}${p.contact?' · '+p.contact:''}</div>
+    ${comp.avg!==null?`<div style="margin-top:6px;font-size:14px;font-weight:600">Composite: ${comp.avg.toFixed(2)} / 5.00</div>`:''}</div>
+    <button class="btn" onclick="document.getElementById('player-detail').innerHTML=''">Close</button></div>`;
+  COACHES.forEach(coach=>{
+    const ev=evals[pnum+'_'+coach];if(!ev)return;
+    html+=`<div class="coach-block"><div class="coach-name">${coach}${ev.recommendation?` — Rec: <strong>${ev.recommendation}</strong>`:''}</div>
+    <table class="score-table"><thead><tr><th>Category</th><th>Score</th></tr></thead><tbody>`;
+    SKILLS.forEach(s=>{const v=ev.scores?.[s.id];if(v!==undefined&&v!==null)html+=`<tr><td>${s.label}</td><td><strong>${v==='NA'?'N/A':v+'/5'}</strong></td></tr>`;});
+    html+='</tbody></table>';
+    if(ev.strengths)html+=`<div class="coach-note"><strong>Strengths</strong>${ev.strengths}</div>`;
+    if(ev.needs)html+=`<div class="coach-note"><strong>Needs work</strong>${ev.needs}</div>`;
+    if(ev.notes)html+=`<div class="coach-note"><strong>Notes</strong>${ev.notes}</div>`;
+    const mvals=Object.entries(ev.measurables||{});
+    if(mvals.length){html+=`<div class="m-pills">`;mvals.forEach(([k,v])=>html+=`<span class="m-pill">${k.replace(/m_[a-z]+_/i,'').replace(/_+/g,' ').trim()}: <strong>${v}</strong></span>`);html+='</div>';}
+    html+='</div>';
+  });
+  html+='</div>';container.innerHTML=html;
+  container.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+async function exportData(){
+  await refreshAll();
+  const blob=new Blob([JSON.stringify({players,evals},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='lslr_tryout_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+}
+
+if(sessionStorage.getItem('lslr_auth')==='1'){
+  document.getElementById('lock-screen').classList.add('hidden');
+}
+
+buildScoringRows();
+buildMeasurables();
+
 if(sessionStorage.getItem('lslr_auth')==='1') refreshAll();
 </script>
 </body>

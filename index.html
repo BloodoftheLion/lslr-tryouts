@@ -785,9 +785,6 @@ buildMeasurables();
 
 // Only load data if already authenticated
 if(sessionStorage.getItem('lslr_auth')==='1') refreshAll();
-</script>
-</body>
-</html>
     const result=await api('evaluations?on_conflict=player_num,coach','POST',payload);
     evals[pnum+'_'+coach]=Array.isArray(result)?result[0]:result;
     showStatus('sc-status','success','Evaluation saved.');setSyncStatus('ok');

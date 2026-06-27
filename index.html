@@ -508,8 +508,10 @@ function switchCoach(){
 function showMainApp(){
   document.getElementById('main-app').style.display = 'block';
   document.getElementById('coach-badge').textContent = currentCoach;
-  buildScoringRows();
-  buildMeasurables();
+  if(!document.getElementById('m_pitch_fb_1')){
+    buildScoringRows();
+    buildMeasurables();
+  }
   refreshAll();
   generateQR();
 }

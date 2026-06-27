@@ -848,7 +848,11 @@ function showPlayerDetail(pnum){
   html+='<div style="display:flex;align-items:baseline;gap:10px"><div style="font-size:28px;font-weight:700;color:var(--red)">#'+pnum+'</div><div style="font-size:17px;font-weight:600">'+p.name+'</div></div>';
   html+='<div style="font-size:13px;color:var(--text-muted)">'+(p.pos||'')+(p.age?' - '+p.age:'')+(p.contact?' - '+p.contact:'')+'</div>';
   if(comp.avg!==null) html+='<div style="margin-top:6px;font-size:14px;font-weight:600">Composite: '+comp.avg.toFixed(2)+' / 5.00</div>';
-  html+='</div><button class="btn" type="button" onclick="document.getElementById('player-detail').innerHTML=''">Close</button></div>';
+  var closeBtn = document.createElement('button');
+  closeBtn.className='btn'; closeBtn.type='button'; closeBtn.textContent='Close';
+  closeBtn.onclick = function(){ document.getElementById('player-detail').innerHTML=''; };
+  // inject close btn via placeholder, replace after
+  html+='</div><span id="detail-close-placeholder"></span></div>';
   COACHES.forEach(function(coach){
     var ev=evals[pnum+'_'+coach]; if(!ev) return;
     html+='<div class="coach-block"><div class="coach-name">'+coach+(ev.recommendation?' - Rec: <strong>'+ev.recommendation+'</strong>':'')+'</div>';
@@ -875,6 +879,13 @@ function showPlayerDetail(pnum){
   });
   html+='</div>';
   container.innerHTML=html;
+  var ph = document.getElementById('detail-close-placeholder');
+  if(ph){
+    var cb=document.createElement('button');
+    cb.className='btn'; cb.type='button'; cb.textContent='Close';
+    cb.onclick=function(){ container.innerHTML=''; };
+    ph.parentNode.replaceChild(cb,ph);
+  }
   container.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 

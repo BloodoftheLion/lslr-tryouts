@@ -439,11 +439,27 @@ function buildScoringRows(){
     if(!c) return;
     var row = document.createElement('div');
     row.className = 'score-row';
-    var starsHtml = [1,2,3,4,5].map(function(i){
-      return '<button class="star" type="button" data-skill="'+skill.id+'" data-val="'+i+'" onclick="setStar(''+skill.id+'','+i+')">'+i+'</button>';
-    }).join('');
-    starsHtml += '<button class="star na" type="button" data-skill="'+skill.id+'" data-val="0" onclick="setStar(''+skill.id+'',0)">N/A</button>';
-    row.innerHTML = '<div class="score-label"><div class="score-label-main">'+skill.label+'</div><div class="score-label-hint">'+skill.hint+'</div></div><div class="stars">'+starsHtml+'</div>';
+    var labelDiv = document.createElement('div');
+    labelDiv.className = 'score-label';
+    labelDiv.innerHTML = '<div class="score-label-main">'+skill.label+'</div><div class="score-label-hint">'+skill.hint+'</div>';
+    var starsDiv = document.createElement('div');
+    starsDiv.className = 'stars';
+    [1,2,3,4,5].forEach(function(i){
+      var btn = document.createElement('button');
+      btn.className = 'star'; btn.type = 'button';
+      btn.dataset.skill = skill.id; btn.dataset.val = i;
+      btn.textContent = i;
+      btn.onclick = (function(sid,sv){ return function(){ setStar(sid,sv); }; })(skill.id, i);
+      starsDiv.appendChild(btn);
+    });
+    var naBtn = document.createElement('button');
+    naBtn.className = 'star na'; naBtn.type = 'button';
+    naBtn.dataset.skill = skill.id; naBtn.dataset.val = 0;
+    naBtn.textContent = 'N/A';
+    naBtn.onclick = (function(sid){ return function(){ setStar(sid,0); }; })(skill.id);
+    starsDiv.appendChild(naBtn);
+    row.appendChild(labelDiv);
+    row.appendChild(starsDiv);
     c.appendChild(row);
   });
 }

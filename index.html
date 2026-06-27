@@ -174,8 +174,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red)}
 .ph-name{font-size:15px;font-weight:600}
 .ph-pos{font-size:12px;color:rgba(255,255,255,0.6)}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px}
-.calc-stat-val.secondary{color:var(--red)}
-@media(prefers-color-scheme:dark){.calc-stat-val.secondary{color:#E8B84B}}
+.calc-stat-val.secondary{color:#1D6FD1}
+@media(prefers-color-scheme:dark){.calc-stat-val.secondary{color:#4D9FFF}}
 textarea{resize:vertical;min-height:70px}
 
 /* QR / parent check-in */
@@ -340,9 +340,9 @@ textarea{resize:vertical;min-height:70px}
         <div id="m-pitch-stats" class="calc-stats" style="grid-template-columns:repeat(5,1fr);margin-top:10px">
           <div class="calc-stat"><div class="calc-stat-label">FB Peak</div><div class="calc-stat-val" id="stat-fb-peak">-</div></div>
           <div class="calc-stat"><div class="calc-stat-label">FB Avg</div><div class="calc-stat-val" id="stat-fb-avg">-</div></div>
-          <div class="calc-stat"><div class="calc-stat-label">CH Peak</div><div class="calc-stat-val" id="stat-ch-peak" style="color:var(--text-accent)">-</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">CH Peak</div><div class="calc-stat-val" id="stat-ch-peak" class="calc-stat-val secondary">-</div></div>
           <div class="calc-stat"><div class="calc-stat-label">CH Avg</div><div class="calc-stat-val" id="stat-ch-avg" class="calc-stat-val secondary">-</div></div>
-          <div class="calc-stat"><div class="calc-stat-label">Strike %</div><div class="calc-stat-val" id="stat-strike-pct" style="color:var(--success)">-</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Strike %</div><div class="calc-stat-val" id="stat-strike-pct" style="color:#1A7A4A">-</div></div>
         </div>
         <div class="sh" style="margin-top:1.5rem">Exit velocity - Tee swings</div>
         <div id="m-exitvelo"></div>

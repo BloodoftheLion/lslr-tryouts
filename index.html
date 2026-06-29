@@ -418,7 +418,7 @@ textarea{resize:vertical;min-height:70px}
     <div class="roster-grid" id="dash-grid"></div>
     <div id="player-detail"></div>
 
-    <div class="sh" style="margin-top:2rem">Top Pitchers</div>
+    <div class="sh" style="margin-top:2rem">Pitching Velocity</div>
     <div id="leaderboard-pitching"></div>
 
     <div class="sh" style="margin-top:1.5rem">Top Speed</div>
@@ -1052,27 +1052,43 @@ function getPlayerMeasurable(pnum, key){
 }
 
 function getPlayerPitchStats(pnum){
-  // Aggregate across coaches - use first coach that has pitch data
+  // Only use first coach that has pitch velocity data to avoid double counting
   var fbVals = [], chVals = [], strikes = 0, total = 0;
-  var i;
+  var i, found = false;
   COACHES.forEach(function(coach){
+    if(found) return;
     var ev = evals[pnum+'_'+coach];
     if(!ev || !ev.measurables) return;
+    // Check if this coach recorded any pitch velocity
+    var hasPitch = false;
     for(i=1;i<=5;i++){
       var fb = parseFloat(ev.measurables['m_pitch_fb_'+i]);
-      if(!isNaN(fb) && fb > 0) fbVals.push(fb);
+      if(!isNaN(fb) && fb > 0){ hasPitch = true; break; }
+    }
+    if(!hasPitch) return;
+    found = true;
+    for(i=1;i<=5;i++){
+      var fb = parseFloat(ev.measurables['m_pitch_fb_'+i]);
+      if(!isNaN(fb) && fb > 0){
+        fbVals.push(fb);
+        // Only count S/B for pitches with recorded velocity
+        var sbfb = ev.measurables['m_sb_fb_'+i];
+        if(sbfb !== undefined){ total++; if(sbfb==='strike') strikes++; }
+      }
       var ch = parseFloat(ev.measurables['m_pitch_ch_'+i]);
-      if(!isNaN(ch) && ch > 0) chVals.push(ch);
-      var sbfb = ev.measurables['m_sb_fb_'+i];
-      var sbch = ev.measurables['m_sb_ch_'+i];
-      if(sbfb !== undefined){ total++; if(sbfb==='strike') strikes++; }
-      if(sbch !== undefined){ total++; if(sbch==='strike') strikes++; }
+      if(!isNaN(ch) && ch > 0){
+        chVals.push(ch);
+        var sbch = ev.measurables['m_sb_ch_'+i];
+        if(sbch !== undefined){ total++; if(sbch==='strike') strikes++; }
+      }
     }
   });
   var fbPeak = fbVals.length ? Math.max.apply(null,fbVals) : null;
+  var fbAvg = fbVals.length ? (fbVals.reduce(function(a,b){return a+b;},0)/fbVals.length) : null;
   var chPeak = chVals.length ? Math.max.apply(null,chVals) : null;
+  var chAvg = chVals.length ? (chVals.reduce(function(a,b){return a+b;},0)/chVals.length) : null;
   var strikePct = total > 0 ? Math.round((strikes/total)*100) : null;
-  return {fbPeak:fbPeak, chPeak:chPeak, strikePct:strikePct};
+  return {fbPeak:fbPeak, fbAvg:fbAvg, chPeak:chPeak, chAvg:chAvg, strikePct:strikePct};
 }
 
 function getPlayerSpeedStats(pnum){
@@ -1094,13 +1110,13 @@ function getPlayerSpeedStats(pnum){
 function renderLeaderboards(){
   var allNums = Object.keys(players);
 
-  // Pitching leaderboard - sort by FB peak descending
+  // Pitching leaderboard - sort by FB avg descending
   var pitchers = allNums.map(function(n){
     var ps = getPlayerPitchStats(n);
     return {num:n, name:players[n].name, pos:players[n].pos,
-      fbPeak:ps.fbPeak, chPeak:ps.chPeak, strikePct:ps.strikePct};
-  }).filter(function(p){ return p.fbPeak !== null || p.strikePct !== null; });
-  pitchers.sort(function(a,b){ return (b.fbPeak||0)-(a.fbPeak||0); });
+      fbPeak:ps.fbPeak, fbAvg:ps.fbAvg, chPeak:ps.chPeak, chAvg:ps.chAvg, strikePct:ps.strikePct};
+  }).filter(function(p){ return p.fbAvg !== null || p.strikePct !== null; });
+  pitchers.sort(function(a,b){ return (b.fbAvg||0)-(a.fbAvg||0); });
 
   var pContainer = document.getElementById('leaderboard-pitching');
   if(!pitchers.length){
@@ -1114,8 +1130,10 @@ function renderLeaderboards(){
       pHtml += '<div class="lb-num">#'+p.num+'</div>';
       pHtml += '<div class="lb-name">'+p.name+(p.pos?'<span class="lb-pos">'+p.pos+'</span>':'')+'</div>';
       pHtml += '<div class="lb-stats">';
-      pHtml += '<div class="lb-stat"><div class="lb-stat-val primary">'+(p.fbPeak!==null?p.fbPeak.toFixed(1)+' mph':'-')+'</div><div class="lb-stat-label">FB Peak</div></div>';
-      pHtml += '<div class="lb-stat"><div class="lb-stat-val secondary">'+(p.chPeak!==null?p.chPeak.toFixed(1)+' mph':'-')+'</div><div class="lb-stat-label">CH Peak</div></div>';
+      pHtml += '<div class="lb-stat"><div class="lb-stat-val primary">'+(p.fbAvg!==null?p.fbAvg.toFixed(1)+' mph':'-')+'</div><div class="lb-stat-label">FB Avg</div></div>';
+      pHtml += '<div class="lb-stat"><div class="lb-stat-val primary" style="opacity:0.7">'+(p.fbPeak!==null?p.fbPeak.toFixed(1)+' mph':'-')+'</div><div class="lb-stat-label">FB Peak</div></div>';
+      pHtml += '<div class="lb-stat"><div class="lb-stat-val secondary">'+(p.chAvg!==null?p.chAvg.toFixed(1)+' mph':'-')+'</div><div class="lb-stat-label">CH Avg</div></div>';
+      pHtml += '<div class="lb-stat"><div class="lb-stat-val secondary" style="opacity:0.7">'+(p.chPeak!==null?p.chPeak.toFixed(1)+' mph':'-')+'</div><div class="lb-stat-label">CH Peak</div></div>';
       pHtml += '<div class="lb-stat"><div class="lb-stat-val" style="color:var(--success)">'+(p.strikePct!==null?p.strikePct+'%':'-')+'</div><div class="lb-stat-label">Strike %</div></div>';
       pHtml += '</div></div>';
     });

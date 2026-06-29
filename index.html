@@ -157,6 +157,23 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red)}
 .badge-D{background:var(--danger-bg);color:var(--danger-text);border:1px solid var(--danger-border)}
 .badge-top{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border)}
 .detail-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-top:1rem}
+.leaderboard{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px}
+.lb-row{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border)}
+.lb-row:last-child{border-bottom:none}
+.lb-rank{font-size:16px;font-weight:700;color:var(--text-muted);min-width:28px}
+.lb-rank.gold{color:#E8B84B}
+.lb-rank.silver{color:#A0A8B8}
+.lb-rank.bronze{color:#C87840}
+.lb-num{font-size:15px;font-weight:700;color:var(--red);min-width:36px}
+.lb-name{font-size:14px;font-weight:500;flex:1}
+.lb-pos{font-size:11px;color:var(--text-muted);margin-left:4px}
+.lb-stats{display:flex;gap:12px;flex-shrink:0}
+.lb-stat{text-align:right}
+.lb-stat-val{font-size:14px;font-weight:700;color:var(--text)}
+.lb-stat-val.primary{color:var(--red)}
+.lb-stat-val.secondary{color:#1D6FD1}
+.lb-stat-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em}
+.lb-empty{padding:16px;text-align:center;font-size:13px;color:var(--text-muted)}
 .coach-block{background:var(--surface);border-radius:var(--radius);padding:12px;margin-bottom:10px}
 .coach-name-label{font-size:13px;font-weight:600;color:var(--red);margin-bottom:10px}
 .score-table{width:100%;font-size:13px;border-collapse:collapse}
@@ -400,6 +417,13 @@ textarea{resize:vertical;min-height:70px}
     </div>
     <div class="roster-grid" id="dash-grid"></div>
     <div id="player-detail"></div>
+
+    <div class="sh" style="margin-top:2rem">Top Pitchers</div>
+    <div id="leaderboard-pitching"></div>
+
+    <div class="sh" style="margin-top:1.5rem">Top Speed</div>
+    <div id="leaderboard-speed"></div>
+
   </div>
 
   <!-- QR CODE TAB -->
@@ -1011,6 +1035,124 @@ function renderDashboard(){
     card.innerHTML='<div class="player-num">#'+p.num+'</div><div class="player-name">'+p.name+(p.pos?' - '+p.pos:'')+'</div><div class="badges">'+recBadge+topBadge+'</div>'+scoreHtml+'<div class="score-bar"><div class="score-fill" style="width:'+pct+'%"></div></div>'+(p.evalCount>0?'<div style="font-size:11px;color:var(--text-muted);margin-top:6px">'+p.evalCount+' eval'+(p.evalCount!==1?'s':'')+'</div>':'');
     grid.appendChild(card);
   });
+}
+
+function getPlayerMeasurable(pnum, key){
+  var best = null;
+  COACHES.forEach(function(coach){
+    var ev = evals[pnum+'_'+coach];
+    if(!ev || !ev.measurables) return;
+    var val = parseFloat(ev.measurables[key]);
+    if(!isNaN(val) && val > 0){
+      if(best === null || val > best) best = val;
+    }
+  });
+  return best;
+}
+
+function getPlayerPitchStats(pnum){
+  // Aggregate across coaches - use first coach that has pitch data
+  var fbVals = [], chVals = [], strikes = 0, total = 0;
+  var i;
+  COACHES.forEach(function(coach){
+    var ev = evals[pnum+'_'+coach];
+    if(!ev || !ev.measurables) return;
+    for(i=1;i<=5;i++){
+      var fb = parseFloat(ev.measurables['m_pitch_fb_'+i]);
+      if(!isNaN(fb) && fb > 0) fbVals.push(fb);
+      var ch = parseFloat(ev.measurables['m_pitch_ch_'+i]);
+      if(!isNaN(ch) && ch > 0) chVals.push(ch);
+      var sbfb = ev.measurables['m_sb_fb_'+i];
+      var sbch = ev.measurables['m_sb_ch_'+i];
+      if(sbfb !== undefined){ total++; if(sbfb==='strike') strikes++; }
+      if(sbch !== undefined){ total++; if(sbch==='strike') strikes++; }
+    }
+  });
+  var fbPeak = fbVals.length ? Math.max.apply(null,fbVals) : null;
+  var chPeak = chVals.length ? Math.max.apply(null,chVals) : null;
+  var strikePct = total > 0 ? Math.round((strikes/total)*100) : null;
+  return {fbPeak:fbPeak, chPeak:chPeak, strikePct:strikePct};
+}
+
+function getPlayerSpeedStats(pnum){
+  var h2h = [], steal = [];
+  COACHES.forEach(function(coach){
+    var ev = evals[pnum+'_'+coach];
+    if(!ev || !ev.measurables) return;
+    var v;
+    v = parseFloat(ev.measurables['m_speed_h2h_1']); if(!isNaN(v)&&v>0) h2h.push(v);
+    v = parseFloat(ev.measurables['m_speed_h2h_2']); if(!isNaN(v)&&v>0) h2h.push(v);
+    v = parseFloat(ev.measurables['m_speed_steal_1']); if(!isNaN(v)&&v>0) steal.push(v);
+    v = parseFloat(ev.measurables['m_speed_steal_2']); if(!isNaN(v)&&v>0) steal.push(v);
+  });
+  var h2hAvg = h2h.length ? (h2h.reduce(function(a,b){return a+b;},0)/h2h.length) : null;
+  var stealAvg = steal.length ? (steal.reduce(function(a,b){return a+b;},0)/steal.length) : null;
+  return {h2hAvg:h2hAvg, stealAvg:stealAvg};
+}
+
+function renderLeaderboards(){
+  var allNums = Object.keys(players);
+
+  // Pitching leaderboard - sort by FB peak descending
+  var pitchers = allNums.map(function(n){
+    var ps = getPlayerPitchStats(n);
+    return {num:n, name:players[n].name, pos:players[n].pos,
+      fbPeak:ps.fbPeak, chPeak:ps.chPeak, strikePct:ps.strikePct};
+  }).filter(function(p){ return p.fbPeak !== null || p.strikePct !== null; });
+  pitchers.sort(function(a,b){ return (b.fbPeak||0)-(a.fbPeak||0); });
+
+  var pContainer = document.getElementById('leaderboard-pitching');
+  if(!pitchers.length){
+    pContainer.innerHTML = '<div class="leaderboard"><div class="lb-empty">No pitching data recorded yet</div></div>';
+  } else {
+    var pHtml = '<div class="leaderboard">';
+    pitchers.forEach(function(p, i){
+      var rankClass = i===0?'gold':i===1?'silver':i===2?'bronze':'';
+      pHtml += '<div class="lb-row">';
+      pHtml += '<div class="lb-rank '+rankClass+'">'+(i+1)+'</div>';
+      pHtml += '<div class="lb-num">#'+p.num+'</div>';
+      pHtml += '<div class="lb-name">'+p.name+(p.pos?'<span class="lb-pos">'+p.pos+'</span>':'')+'</div>';
+      pHtml += '<div class="lb-stats">';
+      pHtml += '<div class="lb-stat"><div class="lb-stat-val primary">'+(p.fbPeak!==null?p.fbPeak.toFixed(1)+' mph':'-')+'</div><div class="lb-stat-label">FB Peak</div></div>';
+      pHtml += '<div class="lb-stat"><div class="lb-stat-val secondary">'+(p.chPeak!==null?p.chPeak.toFixed(1)+' mph':'-')+'</div><div class="lb-stat-label">CH Peak</div></div>';
+      pHtml += '<div class="lb-stat"><div class="lb-stat-val" style="color:var(--success)">'+(p.strikePct!==null?p.strikePct+'%':'-')+'</div><div class="lb-stat-label">Strike %</div></div>';
+      pHtml += '</div></div>';
+    });
+    pHtml += '</div>';
+    pContainer.innerHTML = pHtml;
+  }
+
+  // Speed leaderboard - sort by H2H avg ascending (lower = faster)
+  var speedPlayers = allNums.map(function(n){
+    var ss = getPlayerSpeedStats(n);
+    return {num:n, name:players[n].name, pos:players[n].pos,
+      h2hAvg:ss.h2hAvg, stealAvg:ss.stealAvg};
+  }).filter(function(p){ return p.h2hAvg !== null || p.stealAvg !== null; });
+  speedPlayers.sort(function(a,b){
+    if(a.h2hAvg===null) return 1;
+    if(b.h2hAvg===null) return -1;
+    return a.h2hAvg - b.h2hAvg;
+  });
+
+  var sContainer = document.getElementById('leaderboard-speed');
+  if(!speedPlayers.length){
+    sContainer.innerHTML = '<div class="leaderboard"><div class="lb-empty">No speed data recorded yet</div></div>';
+  } else {
+    var sHtml = '<div class="leaderboard">';
+    speedPlayers.forEach(function(p, i){
+      var rankClass = i===0?'gold':i===1?'silver':i===2?'bronze':'';
+      sHtml += '<div class="lb-row">';
+      sHtml += '<div class="lb-rank '+rankClass+'">'+(i+1)+'</div>';
+      sHtml += '<div class="lb-num">#'+p.num+'</div>';
+      sHtml += '<div class="lb-name">'+p.name+(p.pos?'<span class="lb-pos">'+p.pos+'</span>':'')+'</div>';
+      sHtml += '<div class="lb-stats">';
+      sHtml += '<div class="lb-stat"><div class="lb-stat-val primary">'+(p.h2hAvg!==null?p.h2hAvg.toFixed(2)+' sec':'-')+'</div><div class="lb-stat-label">H2H Avg</div></div>';
+      sHtml += '<div class="lb-stat"><div class="lb-stat-val secondary">'+(p.stealAvg!==null?p.stealAvg.toFixed(2)+' sec':'-')+'</div><div class="lb-stat-label">Steal Avg</div></div>';
+      sHtml += '</div></div>';
+    });
+    sHtml += '</div>';
+    sContainer.innerHTML = sHtml;
+  }
 }
 
 function showPlayerDetail(pnum){

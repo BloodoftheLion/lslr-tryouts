@@ -1035,6 +1035,7 @@ function renderDashboard(){
     card.innerHTML='<div class="player-num">#'+p.num+'</div><div class="player-name">'+p.name+(p.pos?' - '+p.pos:'')+'</div><div class="badges">'+recBadge+topBadge+'</div>'+scoreHtml+'<div class="score-bar"><div class="score-fill" style="width:'+pct+'%"></div></div>'+(p.evalCount>0?'<div style="font-size:11px;color:var(--text-muted);margin-top:6px">'+p.evalCount+' eval'+(p.evalCount!==1?'s':'')+'</div>':'');
     grid.appendChild(card);
   });
+  renderLeaderboards();
 }
 
 function getPlayerMeasurable(pnum, key){

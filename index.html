@@ -299,6 +299,10 @@ textarea{resize:vertical;min-height:70px}
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h3v-3M17 21v-1M21 17h-1"/></svg>
     QR
   </button>
+  <button class="nav-btn" type="button" onclick="showSection('roster',this)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Roster
+  </button>
 </div>
 
 <div class="app">
@@ -424,6 +428,41 @@ textarea{resize:vertical;min-height:70px}
     <div class="sh" style="margin-top:1.5rem">Top Speed</div>
     <div id="leaderboard-speed"></div>
 
+  </div>
+
+  <!-- ROSTER TAB -->
+  <div id="section-roster" class="section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+      <div class="sh" style="margin:0">Player Roster</div>
+      <div style="display:flex;gap:8px">
+        <select id="roster-filter" onchange="renderRoster()" style="font-size:13px">
+          <option value="all">All players</option>
+          <option value="A">Rec: A - Offer</option>
+          <option value="B">Rec: B - Watch list</option>
+          <option value="C">Rec: C - Borderline</option>
+          <option value="D">Rec: D - Pass</option>
+          <option value="none">Not yet evaluated</option>
+        </select>
+        <button class="btn" type="button" onclick="exportRosterCSV()" style="font-size:12px;white-space:nowrap">Export CSV</button>
+      </div>
+    </div>
+    <div id="roster-table-wrap" style="overflow-x:auto">
+      <table id="roster-table" style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border)">
+            <th style="text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap">#</th>
+            <th style="text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Name</th>
+            <th style="text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Pos</th>
+            <th style="text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Contact</th>
+            <th style="text-align:center;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Score</th>
+            <th style="text-align:center;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Rec</th>
+            <th style="text-align:center;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Evals</th>
+          </tr>
+        </thead>
+        <tbody id="roster-tbody"></tbody>
+      </table>
+    </div>
+    <div id="roster-empty" style="display:none;text-align:center;padding:2rem;color:var(--text-muted);font-size:13px">No players match this filter</div>
   </div>
 
   <!-- QR CODE TAB -->
@@ -979,6 +1018,7 @@ function showSection(id,btn){
   document.getElementById('section-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
   if(id==='dashboard') refreshAll();
+  if(id==='roster'){ refreshAll(); setTimeout(renderRoster, 500); }
 }
 
 function showScoreTab(tab,btn){
@@ -1223,6 +1263,83 @@ function exportData(){
     var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
     a.download='lslr_tryout_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
   },500);
+}
+
+// ── Roster ───────────────────────────────────────────────────────────────────
+function renderRoster(){
+  var filter = document.getElementById('roster-filter').value;
+  var tbody = document.getElementById('roster-tbody');
+  var empty = document.getElementById('roster-empty');
+  var nums = Object.keys(players).sort(function(a,b){ return parseInt(a)-parseInt(b); });
+
+  var rows = nums.map(function(n){
+    var p = players[n];
+    var comp = getComposite(n);
+    return {num:n, name:p.name, pos:p.pos||'-', contact:p.contact||'-', age:p.age||'-',
+      avg:comp.avg, rec:comp.rec, evalCount:comp.evalCount};
+  });
+
+  if(filter === 'A' || filter === 'B' || filter === 'C' || filter === 'D'){
+    rows = rows.filter(function(r){ return r.rec === filter; });
+  } else if(filter === 'none'){
+    rows = rows.filter(function(r){ return r.evalCount === 0; });
+  }
+
+  if(!rows.length){
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  var recColors = {A:'var(--success)',B:'var(--red)',C:'var(--warning-text)',D:'var(--danger-text)'};
+  var recBg = {A:'var(--success-bg)',B:'var(--accent-bg)',C:'var(--warning-bg)',D:'var(--danger-bg)'};
+
+  tbody.innerHTML = '';
+  rows.forEach(function(r, i){
+    var tr = document.createElement('tr');
+    tr.style.cssText = 'border-bottom:1px solid var(--border);' + (i%2===0?'background:transparent':'background:var(--surface)');
+    var recCell = r.rec
+      ? '<span style="background:'+recBg[r.rec]+';color:'+recColors[r.rec]+';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">'+r.rec+'</span>'
+      : '<span style="color:var(--text-muted);font-size:11px">-</span>';
+    tr.innerHTML =
+      '<td style="padding:10px;font-weight:700;color:var(--red)">#'+r.num+'</td>' +
+      '<td style="padding:10px;font-weight:500">'+r.name+'</td>' +
+      '<td style="padding:10px;color:var(--text-secondary)">'+r.pos+'</td>' +
+      '<td style="padding:10px;color:var(--text-secondary);word-break:break-all">'+r.contact+'</td>' +
+      '<td style="padding:10px;text-align:center;font-weight:700">'+(r.avg!==null?r.avg.toFixed(2):'-')+'</td>' +
+      '<td style="padding:10px;text-align:center">'+recCell+'</td>' +
+      '<td style="padding:10px;text-align:center;color:var(--text-muted)">'+r.evalCount+'</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function exportRosterCSV(){
+  var filter = document.getElementById('roster-filter').value;
+  var nums = Object.keys(players).sort(function(a,b){ return parseInt(a)-parseInt(b); });
+  var rows = nums.map(function(n){
+    var p = players[n];
+    var comp = getComposite(n);
+    return {num:n, name:p.name, pos:p.pos||'', contact:p.contact||'', age:p.age||'',
+      avg:comp.avg, rec:comp.rec, evalCount:comp.evalCount};
+  });
+  if(filter === 'A' || filter === 'B' || filter === 'C' || filter === 'D'){
+    rows = rows.filter(function(r){ return r.rec === filter; });
+  } else if(filter === 'none'){
+    rows = rows.filter(function(r){ return r.evalCount === 0; });
+  }
+  var csv = "Player #,Name,Position,Age/Grad Year,Contact,Composite Score,Recommendation,Evals\n";
+  rows.forEach(function(r){
+    var rowAvg = r.avg!==null ? r.avg.toFixed(2) : '';
+    var rowRec = r.rec || '';
+    csv += [r.num, '"'+r.name+'"', r.pos, '"'+r.age+'"', '"'+r.contact+'"',
+      rowAvg, rowRec, r.evalCount].join(',') + "\n";
+  });
+  var blob = new Blob([csv], {type:'text/csv'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'lslr_roster_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
 }
 
 // ── QR Code ───────────────────────────────────────────────────────────────────

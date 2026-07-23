@@ -236,18 +236,29 @@ textarea{resize:vertical;min-height:70px}
   <div class="screen-title">Player Check-In</div>
   <div class="screen-sub">LSLR 11U Tryouts</div>
   <div id="parent-form-wrap" style="width:100%;max-width:340px">
+    <div style="margin-bottom:4px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Parent / Guardian Name <span style="color:#CC2936">*</span></div>
     <div style="margin-bottom:12px">
-      <input type="text" id="parent-name" placeholder="Player full name" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:white;border-radius:8px;padding:12px 14px;font-size:16px"/>
+      <input type="text" id="parent-guardian-name" placeholder="Your full name" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:white;border-radius:8px;padding:12px 14px;font-size:16px"/>
     </div>
+    <div style="margin-bottom:4px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Player Full Name <span style="color:#CC2936">*</span></div>
+    <div style="margin-bottom:12px">
+      <input type="text" id="parent-name" placeholder="Player's full name" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:white;border-radius:8px;padding:12px 14px;font-size:16px"/>
+    </div>
+    <div style="margin-bottom:4px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Primary Position</div>
     <div style="margin-bottom:12px">
       <select id="parent-pos" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:white;border-radius:8px;padding:12px 14px;font-size:16px">
-        <option value="">Primary position...</option>
+        <option value="">Select position...</option>
         <option>P</option><option>C</option><option>1B</option><option>2B</option>
         <option>3B</option><option>SS</option><option>OF</option><option>UTL</option>
       </select>
     </div>
+    <div style="margin-bottom:4px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Email <span style="color:#CC2936">*</span></div>
+    <div style="margin-bottom:12px">
+      <input type="email" id="parent-email" placeholder="your@email.com" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:white;border-radius:8px;padding:12px 14px;font-size:16px"/>
+    </div>
+    <div style="margin-bottom:4px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Phone <span style="color:rgba(255,255,255,0.3);font-size:10px">(optional)</span></div>
     <div style="margin-bottom:16px">
-      <input type="text" id="parent-contact" placeholder="Your phone or email" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:white;border-radius:8px;padding:12px 14px;font-size:16px"/>
+      <input type="tel" id="parent-phone" placeholder="(555) 555-5555" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:white;border-radius:8px;padding:12px 14px;font-size:16px"/>
     </div>
     <button class="screen-btn" type="button" id="parent-submit-btn" onclick="parentCheckin()">Check In</button>
     <div class="screen-error" id="parent-error"></div>
@@ -451,9 +462,11 @@ textarea{resize:vertical;min-height:70px}
         <thead>
           <tr style="border-bottom:2px solid var(--border)">
             <th style="text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap">#</th>
-            <th style="text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Name</th>
+            <th style="text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Player</th>
             <th style="text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Pos</th>
-            <th style="text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Contact</th>
+            <th style="text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Guardian</th>
+            <th style="text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Email</th>
+            <th style="text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Phone</th>
             <th style="text-align:center;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Score</th>
             <th style="text-align:center;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Rec</th>
             <th style="text-align:center;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Evals</th>
@@ -685,26 +698,40 @@ function registerPlayer(){
 
 // Parent self check-in
 function parentCheckin(){
-  var name = document.getElementById('parent-name').value.trim();
+  var guardianName = document.getElementById('parent-guardian-name').value.trim();
+  var playerName = document.getElementById('parent-name').value.trim();
   var pos = document.getElementById('parent-pos').value;
-  var contact = document.getElementById('parent-contact').value.trim();
+  var email = document.getElementById('parent-email').value.trim();
+  var phone = document.getElementById('parent-phone').value.trim();
   var err = document.getElementById('parent-error');
-  if(!name){ err.textContent='Please enter your player\'s name.'; return; }
+
+  // Validation
+  if(!guardianName){ err.textContent='Parent/guardian name is required.'; return; }
+  if(!playerName){ err.textContent='Player name is required.'; return; }
+  if(!email){ err.textContent='Email address is required.'; return; }
+  // Basic email format check
+  if(email.indexOf('@') < 1 || email.lastIndexOf('.') < email.indexOf('@')+2){
+    err.textContent='Please enter a valid email address.'; return;
+  }
+
+  err.textContent='';
   var btn = document.getElementById('parent-submit-btn');
   btn.disabled=true; btn.textContent='Checking in...';
-  // Load current players to get next number
+
   apiCall('players?order=num','GET',null,function(e,rows){
     if(e){ err.textContent='Connection error. Please try again.'; btn.disabled=false; btn.textContent='Check In'; return; }
     var nums = rows.map(function(r){ return parseInt(r.num)||0; });
     var nextNum = nums.length ? Math.max.apply(null,nums)+1 : 1;
-    var payload = {num:String(nextNum), name:name, pos:pos, contact:contact, age:''};
+    var payload = {num:String(nextNum), name:playerName, pos:pos,
+      contact:email + (phone ? ' / ' + phone : ''),
+      age:'', guardian_name:guardianName, email:email, phone:phone};
     apiCall('players','POST',payload,function(e2){
       if(e2){ err.textContent='Check-in failed. Please see a coach.'; btn.disabled=false; btn.textContent='Check In'; return; }
       document.getElementById('parent-form-wrap').style.display='none';
       var suc = document.getElementById('parent-success');
       suc.classList.remove('hidden');
       document.getElementById('parent-assigned-num').textContent=nextNum;
-      document.getElementById('parent-assigned-name').textContent=name;
+      document.getElementById('parent-assigned-name').textContent=playerName;
     });
   });
 }
@@ -1275,7 +1302,10 @@ function renderRoster(){
   var rows = nums.map(function(n){
     var p = players[n];
     var comp = getComposite(n);
-    return {num:n, name:p.name, pos:p.pos||'-', contact:p.contact||'-', age:p.age||'-',
+    return {num:n, name:p.name, pos:p.pos||'-',
+      guardian:p.guardian_name||'-',
+      email:p.email||p.contact||'-',
+      phone:p.phone||'-',
       avg:comp.avg, rec:comp.rec, evalCount:comp.evalCount};
   });
 
@@ -1306,7 +1336,9 @@ function renderRoster(){
       '<td style="padding:10px;font-weight:700;color:var(--red)">#'+r.num+'</td>' +
       '<td style="padding:10px;font-weight:500">'+r.name+'</td>' +
       '<td style="padding:10px;color:var(--text-secondary)">'+r.pos+'</td>' +
-      '<td style="padding:10px;color:var(--text-secondary);word-break:break-all">'+r.contact+'</td>' +
+      '<td style="padding:10px;color:var(--text-secondary)">'+r.guardian+'</td>' +
+      '<td style="padding:10px;color:var(--text-secondary);word-break:break-all">'+r.email+'</td>' +
+      '<td style="padding:10px;color:var(--text-secondary);white-space:nowrap">'+r.phone+'</td>' +
       '<td style="padding:10px;text-align:center;font-weight:700">'+(r.avg!==null?r.avg.toFixed(2):'-')+'</td>' +
       '<td style="padding:10px;text-align:center">'+recCell+'</td>' +
       '<td style="padding:10px;text-align:center;color:var(--text-muted)">'+r.evalCount+'</td>';
@@ -1328,7 +1360,7 @@ function exportRosterCSV(){
   } else if(filter === 'none'){
     rows = rows.filter(function(r){ return r.evalCount === 0; });
   }
-  var csv = "Player #,Name,Position,Age/Grad Year,Contact,Composite Score,Recommendation,Evals\n";
+  var csv = "Player #,Player Name,Position,Guardian Name,Email,Phone,Composite Score,Recommendation,Evals\n";
   rows.forEach(function(r){
     var rowAvg = r.avg!==null ? r.avg.toFixed(2) : '';
     var rowRec = r.rec || '';

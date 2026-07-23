@@ -346,14 +346,24 @@ textarea{resize:vertical;min-height:70px}
       <div class="card-title">Register player</div>
       <div class="field-row">
         <div class="field"><label>Player # (auto or override)</label><input type="number" id="ci-num" placeholder="Auto-assigned" min="1"/></div>
-        <div class="field"><label>Primary position</label>
+        <div class="field"><label>Primary position <span style="color:var(--red)">*</span></label>
           <select id="ci-pos"><option value="">Select...</option><option>P</option><option>C</option><option>1B</option><option>2B</option><option>3B</option><option>SS</option><option>OF</option><option>UTL</option></select>
         </div>
       </div>
-      <div class="field"><label>Full name</label><input type="text" id="ci-name" placeholder="First Last"/></div>
       <div class="field-row">
-        <div class="field"><label>Age / grad year</label><input type="text" id="ci-age" placeholder="e.g. 10 / 2034"/></div>
-        <div class="field"><label>Parent contact</label><input type="text" id="ci-contact" placeholder="Phone or email"/></div>
+        <div class="field"><label>Secondary position</label>
+          <select id="ci-pos2"><option value="">Select...</option><option>P</option><option>C</option><option>1B</option><option>2B</option><option>3B</option><option>SS</option><option>OF</option><option>UTL</option></select>
+        </div>
+        <div class="field"><label>School grade <span style="color:var(--red)">*</span></label>
+          <select id="ci-grade"><option value="">Select...</option><option>K</option><option>1st</option><option>2nd</option><option>3rd</option><option>4th</option><option>5th</option><option>6th</option><option>7th</option><option>8th</option><option>9th</option><option>10th</option><option>11th</option><option>12th</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Player full name <span style="color:var(--red)">*</span></label><input type="text" id="ci-name" placeholder="First Last"/></div>
+      <div class="field"><label>Date of birth <span style="color:var(--red)">*</span></label><input type="date" id="ci-dob"/></div>
+      <div class="field"><label>Parent / guardian name <span style="color:var(--red)">*</span></label><input type="text" id="ci-guardian" placeholder="Guardian full name"/></div>
+      <div class="field-row">
+        <div class="field"><label>Email <span style="color:var(--red)">*</span></label><input type="email" id="ci-email" placeholder="parent@email.com"/></div>
+        <div class="field"><label>Phone <span style="color:var(--red)">*</span></label><input type="tel" id="ci-phone" placeholder="(555) 555-5555"/></div>
       </div>
       <button class="btn btn-primary btn-full" type="button" id="ci-btn" onclick="registerPlayer()">Add player</button>
     </div>
@@ -699,19 +709,38 @@ function registerPlayer(){
   var rawNum = document.getElementById('ci-num').value.trim();
   var num = rawNum ? rawNum : String(getNextPlayerNum());
   var name = document.getElementById('ci-name').value.trim();
+  var pos = document.getElementById('ci-pos').value;
+  var pos2 = document.getElementById('ci-pos2').value;
+  var grade = document.getElementById('ci-grade').value;
+  var dob = document.getElementById('ci-dob').value.trim();
+  var guardian = document.getElementById('ci-guardian').value.trim();
+  var email = document.getElementById('ci-email').value.trim();
+  var phone = document.getElementById('ci-phone').value.trim();
+
   if(!name){ showStatus('ci-status','error','Player name is required.'); return; }
+  if(!pos){ showStatus('ci-status','error','Primary position is required.'); return; }
+  if(!grade){ showStatus('ci-status','error','School grade is required.'); return; }
+  if(!dob){ showStatus('ci-status','error','Date of birth is required.'); return; }
+  if(!guardian){ showStatus('ci-status','error','Guardian name is required.'); return; }
+  if(!email){ showStatus('ci-status','error','Email is required.'); return; }
+  if(!phone){ showStatus('ci-status','error','Phone is required.'); return; }
   if(players[num]){ showStatus('ci-status','error','Player #'+num+' is already registered.'); return; }
+
   var btn = document.getElementById('ci-btn'); btn.disabled=true; btn.textContent='Adding...';
-  var payload = {num:num, name:name,
-    age:document.getElementById('ci-age').value.trim(),
-    pos:document.getElementById('ci-pos').value,
-    contact:document.getElementById('ci-contact').value.trim()};
+  var payload = {num:num, name:name, pos:pos, pos_secondary:pos2,
+    age:grade, dob:dob, school_grade:grade,
+    guardian_name:guardian, email:email, phone:phone,
+    contact:email+' / '+phone};
   apiCall('players','POST',payload,function(err){
     if(err){ showStatus('ci-status','error','Registration failed.'); setSyncStatus('error'); }
     else {
       players[num]=payload;
-      ['ci-num','ci-name','ci-age','ci-contact'].forEach(function(id){ document.getElementById(id).value=''; });
-      document.getElementById('ci-pos').value='';
+      ['ci-num','ci-name','ci-dob','ci-guardian','ci-email','ci-phone'].forEach(function(id){
+        document.getElementById(id).value='';
+      });
+      ['ci-pos','ci-pos2','ci-grade'].forEach(function(id){
+        document.getElementById(id).value='';
+      });
       refreshPlayerList(); refreshPlayerSelect();
       showStatus('ci-status','success','#'+num+' '+name+' registered.');
       setSyncStatus('ok');
